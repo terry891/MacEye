@@ -1,0 +1,6 @@
+# Build output
+EyeBreak.app/
+build/
+*.o
+*.swiftmodule
+.DS_Store
