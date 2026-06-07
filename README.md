@@ -8,6 +8,9 @@ eye strain using a gentle, hard-to-ignore nudge.
   <img src="docs/images/break-overlay.png" alt="EyeBreak full-screen break overlay: a gradient card with a 👀 mascot, an animated countdown ring, and an encouraging message" width="760">
 </p>
 
+## Download
+Grab the latest signed `.dmg` from the **[Releases page](https://github.com/terry891/MacEye/releases/latest)** — open it, drag **EyeBreak** to **Applications**, done. (First launch: see the Gatekeeper note below.)
+
 ## Features
 - Full-screen "cute" break overlay: blurred backdrop, gradient card, breathing 👀
   mascot, animated countdown ring, encouraging rotating messages.
@@ -44,6 +47,17 @@ The DMG contains EyeBreak.app, an Applications drag-target, and an install note.
 > ```
 > …or uses **System Settings → Privacy & Security → Open Anyway**. (Proper
 > distribution without this step requires an Apple Developer ID and notarization.)
+
+## Releases (automated)
+Pushing a version tag builds the universal `.dmg` and publishes a GitHub Release
+automatically (via `.github/workflows/release.yml`, using the built-in token — no
+secrets needed). To cut a new version:
+```bash
+git tag v1.1 && git push origin v1.1     # minor bump
+git tag v2.0 && git push origin v2.0     # major bump
+```
+The workflow syncs the app's bundle version to the tag, runs tests, builds, packages,
+and attaches `EyeBreak-<version>.dmg` to the release with a SHA-256 checksum.
 
 ## App icon
 The icon is generated programmatically (no image assets) — a cute eye on the
