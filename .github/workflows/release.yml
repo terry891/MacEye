@@ -1,0 +1,76 @@
+name: Release DMG
+
+# Builds the universal .dmg and publishes a GitHub Release automatically
+# whenever a version tag is pushed (e.g. v1.1 for a minor bump, v2.0 for major).
+#   git tag v1.1 && git push origin v1.1
+on:
+  push:
+    tags:
+      - 'v*.*'   # matches v1.0, v1.1, v2.0, v1.0.1, ...
+
+permissions:
+  contents: write   # required to create releases and upload assets (uses GITHUB_TOKEN)
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Derive version from tag
+        id: ver
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Tag $GITHUB_REF_NAME -> version $VERSION"
+
+      - name: Sync bundle version to tag
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.ver.outputs.version }}" Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.ver.outputs.version }}" Info.plist
+
+      - name: Run tests
+        run: ./test.sh
+
+      - name: Build universal app
+        run: ./build.sh
+
+      - name: Package DMG
+        run: ./package_dmg.sh
+
+      - name: Verify universal binary
+        run: lipo -info build/EyeBreak.app/Contents/MacOS/EyeBreak
+
+      - name: Compute checksum
+        id: sum
+        run: |
+          DMG="build/EyeBreak-${{ steps.ver.outputs.version }}.dmg"
+          echo "dmg=$DMG" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(shasum -a 256 "$DMG" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Render release notes
+        run: |
+          sed -e "s/__VERSION__/${{ steps.ver.outputs.version }}/g" \
+              -e "s/__SHA256__/${{ steps.sum.outputs.sha256 }}/g" \
+              .github/release_notes_template.md > "${RUNNER_TEMP}/notes.md"
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          DMG="${{ steps.sum.outputs.dmg }}"
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$DMG" --repo "${{ github.repository }}" --clobber
+          else
+            gh release create "$TAG" "$DMG" \
+              --repo "${{ github.repository }}" \
+              --title "EyeBreak ${{ steps.ver.outputs.version }}" \
+              --notes-file "${RUNNER_TEMP}/notes.md" \
+              --latest
+          fi

@@ -42,6 +42,7 @@ final class OverlayController {
             view.ring.setRemaining(remaining)
             view.ring.start(duration: TimeInterval(breakSeconds))
             view.startMascotPulse()
+            view.startEmojiCycle()
         }
 
         NSApp.activate(ignoringOtherApps: true)
@@ -93,6 +94,7 @@ final class OverlayController {
         NotificationCenter.default.removeObserver(
             self, name: NSApplication.didChangeScreenParametersNotification, object: nil)
 
+        views.forEach { $0.stop() }
         let toClose = windows
         windows.removeAll(); views.removeAll()
         NSAnimationContext.runAnimationGroup({ ctx in
